@@ -1,4 +1,4 @@
-fn test() {
+fn main() {
     use std::time::Instant;
     fn fib(x: u32) -> u128 {
         if x == 0 {
@@ -14,14 +14,14 @@ fn test() {
         }
         }
     for number in 0..=50 {
-        println!("K equals {}", number);
+        //println!("K equals {}", number);
         // variable below tracks current time
         let start = Instant::now();
         let result = fib(number);
         let duration: std::time::Duration = start.elapsed();
         // variable above tracks elapsed time of recursion
-        println!("Fibonacci of {} is: {}", number, result);
-        println!("Calculation took: {:?}", duration);
+        //println!("{}", result);
+        println!("{:?}", duration);
         // print commands for Fib number and Calculation time
 
     }
