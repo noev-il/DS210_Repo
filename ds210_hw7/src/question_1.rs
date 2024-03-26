@@ -4,6 +4,7 @@ enum Shape {
     Rectangle(f64, f64),     // Length of sides
     Circle(f64),             // Radius
 }
+
 impl Shape {
     // Calculate Area
     fn is_valid(&self) -> bool {
@@ -42,20 +43,32 @@ impl Shape {
     }
 
 }
+// Auxiliary function to create a shape
+fn create_shape(shape_type: &str, dimensions: (f64, f64, f64)) -> Option<Shape> {
+    match shape_type {
+        "triangle" => Some(Shape::Triangle(dimensions.0, dimensions.1, dimensions.2)),
+        "rectangle" => Some(Shape::Rectangle(dimensions.0, dimensions.1)),
+        "circle" => Some(Shape::Circle(dimensions.0)),
+        _ => None, // Return None if the shape type is not recognized
+    }
+}
+
 fn main() {
-    let triangle = Shape::Triangle(3.0, 3.0, 4.0);
-    let rectangle = Shape::Rectangle(4.0, 5.0);
-    let circle = Shape::Circle(8.0);
+    // Example usage of create_shape
+    let triangle = create_shape("triangle", (3.0, 4.0, 5.0)).expect("Invalid shape");
+    let rectangle = create_shape("rectangle", (4.0, 5.0, 0.0)).expect("Invalid shape");
+    let circle = create_shape("circle", (8.0, 0.0, 0.0)).expect("Invalid shape");
+
     println!("The area of a triangle is {}", triangle.area());
     println!("The perimeter of a triangle is {}", triangle.perimeter());
     println!("The shape with double the perimeter of the original triangle is a {:?}", triangle.double());
     println!("The validity of the parameters of the triangle is {:?}", triangle.is_valid());
-
+    println!("========================================================");
     println!("The area of a rectangle is {}", rectangle.area());
     println!("The perimeter of a rectangle is {}", rectangle.perimeter());
     println!("The shape with double the perimeter of the original rectangle is a {:?}", rectangle.double());
     println!("The validity of the parameters of the rectangle is {:?}", rectangle.is_valid());
-
+    println!("========================================================");
     println!("The area of a circle is {}", circle.area());
     println!("The perimeter of a circle is {}", circle.perimeter());
     println!("The shape with double the perimeter of the original circle is a {:?}", circle.double());
