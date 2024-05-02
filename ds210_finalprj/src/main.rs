@@ -36,6 +36,30 @@ fn load_data(file_path: &str) -> Result<Vec<ElectionRecord>, Box<dyn Error>> {
     Ok(data)
 }
 
+// Function to find the top 10 candidates by total votes
+fn top_ten_candidates(vote_aggregation: &HashMap<String, BTreeMap<String, u32>>) -> Vec<(String, u32)> {
+    let mut candidate_totals: HashMap<String, u32> = HashMap::new();
+
+    // Aggregate total votes for each candidate across all precincts
+    for candidates in vote_aggregation.values() {
+        for (candidate, votes) in candidates {
+            // Skip "UNDERVOTES" and "PUBLIC COUNTER" instances
+            if candidate != "UNDERVOTES" && candidate != "PUBLIC COUNTER" {
+                *candidate_totals.entry(candidate.clone()).or_insert(0) += votes;
+            }
+        }
+    }
+
+    // Collect and sort candidates by total votes
+    let mut sorted_candidates: Vec<_> = candidate_totals.into_iter().collect();
+    sorted_candidates.sort_by(|a, b| b.1.cmp(&a.1)); // Sort descending by votes
+
+    // Return the top 10 candidates
+    sorted_candidates.into_iter().take(10).collect()
+}
+
+
+
 fn main() {
     let result = load_data("Precinct_Data.csv");
     match result {
@@ -45,7 +69,7 @@ fn main() {
             let mut vote_aggregation: HashMap<String, BTreeMap<String, u32>> = HashMap::new();
             let mut candidate_to_precincts: HashMap<String, Vec<String>> = HashMap::new();
 
-            // Aggregate votes
+            // Aggregate Votes
             for record in records {
                 if let Some(precinct) = &record.precinct {
                     if let Some(candidate) = &record.candidate {
@@ -84,7 +108,11 @@ fn main() {
                     }
                 }
             }
-
+            let top_candidates = top_ten_candidates(&vote_aggregation);
+            println!("Top 10 Candidates:");
+            for (candidate, total_votes) in top_candidates {
+                println!("{}: {}", candidate, total_votes);
+            }
             println!("Graph initialized with {} nodes and {} edges.", graph.node_count(), graph.edge_count());
         },
         Err(e) => println!("Failed to load data: {}", e),
