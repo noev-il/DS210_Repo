@@ -1,70 +1,25 @@
+use petgraph::graph::{NodeIndex, UnGraph};
+use std::collections::{HashMap, BTreeMap};
 use csv::{Reader, ReaderBuilder};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, de::{self, Deserializer}};
 use std::error::Error;
 use std::fs::File;
-use serde::de::{self, Visitor};
-use std::fmt;
-
 
 fn deserialize_option_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
     where D: Deserializer<'de>,
 {
     let opt = Option::deserialize(deserializer)?;
     Ok(Some(opt.unwrap_or_else(|| "MISSING".to_string())))
-}// THIS FUNCTION REPLACES ALL MISSING VALUES WITH THE STRING "MISSING"
+}
 
 #[derive(Debug, Deserialize)]
-struct ElectionRecord { // CREATES A STRUCT TO TO HOLD THE DATA
+struct ElectionRecord {
     #[serde(deserialize_with = "deserialize_option_string")]
     precinct: Option<String>,
     #[serde(deserialize_with = "deserialize_option_string")]
-    office: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    party_detailed: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    party_simplified: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    mode: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    votes: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    county_name: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    county_fips: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    jurisdiction_name: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    jurisdiction_fips: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
     candidate: Option<String>,
     #[serde(deserialize_with = "deserialize_option_string")]
-    district: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    magnitude: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    dataverse: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    year: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    stage: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    state: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    special: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    writein: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    state_po: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    state_fips: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    state_cen: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    state_ic: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    date: Option<String>,
-    #[serde(deserialize_with = "deserialize_option_string")]
-    readme_check: Option<String>,
+    votes: Option<String>,
 }
 
 fn load_data(file_path: &str) -> Result<Vec<ElectionRecord>, Box<dyn Error>> {
@@ -78,17 +33,59 @@ fn load_data(file_path: &str) -> Result<Vec<ElectionRecord>, Box<dyn Error>> {
         let record: ElectionRecord = result?;
         data.push(record);
     }
-
     Ok(data)
 }
 
 fn main() {
-    match load_data("Precinct_Data.csv") {
+    let result = load_data("Precinct_Data.csv");
+    match result {
         Ok(records) => {
-            println!("Data loaded successfully!");
+            let mut graph = UnGraph::<String, u32>::new_undirected();
+            let mut index_map: HashMap<String, NodeIndex> = HashMap::new();
+            let mut vote_aggregation: HashMap<String, BTreeMap<String, u32>> = HashMap::new();
+            let mut candidate_to_precincts: HashMap<String, Vec<String>> = HashMap::new();
+
+            // Aggregate votes
             for record in records {
-                println!("{:?}", record);
+                if let Some(precinct) = &record.precinct {
+                    if let Some(candidate) = &record.candidate {
+                        let votes: u32 = record.votes.as_ref().map(|v| v.parse().unwrap_or(0)).unwrap_or(0);
+                        vote_aggregation.entry(precinct.clone())
+                            .or_insert_with(BTreeMap::new)
+                            .entry(candidate.clone())
+                            .and_modify(|e| *e += votes)
+                            .or_insert(votes);
+                    }
+                }
             }
+
+            // Determine top candidates and map them to precincts
+            for (precinct, candidates) in &vote_aggregation {
+                let top_candidate = candidates.iter()
+                    .max_by_key(|(_, votes)| *votes)
+                    .map(|(candidate, _)| candidate.clone())
+                    .unwrap_or_default();
+                
+                candidate_to_precincts.entry(top_candidate)
+                    .or_insert_with(Vec::new)
+                    .push(precinct.clone());
+            }
+
+
+            for (candidate, precincts) in candidate_to_precincts {
+                for precinct in &precincts {
+                    let node_index = *index_map.entry(precinct.clone()).or_insert_with(|| graph.add_node(precinct.clone()));
+
+                    for other_precinct in &precincts {
+                        if precinct != other_precinct {
+                            let other_node_index = *index_map.entry(other_precinct.clone()).or_insert_with(|| graph.add_node(other_precinct.clone()));
+                            graph.add_edge(node_index, other_node_index, 1);
+                        }
+                    }
+                }
+            }
+
+            println!("Graph initialized with {} nodes and {} edges.", graph.node_count(), graph.edge_count());
         },
         Err(e) => println!("Failed to load data: {}", e),
     }
