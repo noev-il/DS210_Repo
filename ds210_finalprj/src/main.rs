@@ -1,7 +1,7 @@
 use petgraph::graph::{NodeIndex, UnGraph};
 use std::collections::{HashMap, BTreeMap};
-use csv::{Reader, ReaderBuilder};
-use serde::{Deserialize, de::{self, Deserializer}};
+use csv::ReaderBuilder;
+use serde::{Deserialize, Deserializer};
 use std::error::Error;
 use std::fs::File;
 
@@ -58,7 +58,33 @@ fn top_ten_candidates(vote_aggregation: &HashMap<String, BTreeMap<String, u32>>)
     sorted_candidates.into_iter().take(10).collect()
 }
 
+fn print_summarized_degree_distribution(graph: &UnGraph<String, u32>) {
+    let mut degree_counts: HashMap<String, usize> = HashMap::new();
 
+    for node_idx in graph.node_indices() {
+        let degree = graph.edges(node_idx).count();
+        let range = match degree {
+            0..=5 => "0-5",
+            6..=10 => "6-10",
+            11..=20 => "11-20",
+            21..=50 => "21-50",
+            51..=100 => "51-100",
+            101..=200 => "101-200",
+            201..=500 => "201-500",
+            501..=1000 => "501-1000",
+            _ => "1001+",
+        };
+        *degree_counts.entry(range.to_string()).or_insert(0) += 1;
+    }
+
+    let mut degrees: Vec<_> = degree_counts.iter().collect();
+    degrees.sort_by_key(|&(range, _)| range);
+    
+    println!("Summarized Degree Distribution:");
+    for (range, count) in degrees {
+        println!("{}: {} nodes", range, count);
+    }
+}
 
 fn main() {
     let result = load_data("Precinct_Data.csv");
@@ -96,7 +122,7 @@ fn main() {
             }
 
 
-            for (candidate, precincts) in candidate_to_precincts {
+            for (_candidate, precincts) in candidate_to_precincts {
                 for precinct in &precincts {
                     let node_index = *index_map.entry(precinct.clone()).or_insert_with(|| graph.add_node(precinct.clone()));
 
@@ -108,6 +134,7 @@ fn main() {
                     }
                 }
             }
+            print_summarized_degree_distribution(&graph);
             let top_candidates = top_ten_candidates(&vote_aggregation);
             println!("Top 10 Candidates:");
             for (candidate, total_votes) in top_candidates {
