@@ -49,3 +49,24 @@ pub fn top_ten_candidates(vote_aggregation: &HashMap<String, BTreeMap<String, u3
     // Return the top 10 candidates
     sorted_candidates.into_iter().take(10).collect()
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::{HashMap, BTreeMap};
+
+    #[test]
+    fn test_exclude_special_candidates() {
+        let mut vote_aggregation: HashMap<String, BTreeMap<String, u32>> = HashMap::new();
+        vote_aggregation.entry("Precinct1".to_string()).or_insert_with(BTreeMap::new).insert("Candidate1".to_string(), 500);
+        vote_aggregation.entry("Precinct1".to_string()).or_insert_with(BTreeMap::new).insert("UNDERVOTES".to_string(), 150);
+        vote_aggregation.entry("Precinct1".to_string()).or_insert_with(BTreeMap::new).insert("PUBLIC COUNTER".to_string(), 300);
+
+        let top_candidates = top_ten_candidates(&vote_aggregation);
+
+        // Ensure No Unwanted Entries Included
+        for (candidate, _) in &top_candidates {
+            assert_ne!(candidate, "UNDERVOTES");
+            assert_ne!(candidate, "PUBLIC COUNTER");
+        }
+    }
+}

@@ -33,3 +33,16 @@ pub fn load_data(file_path: &str) -> Result<Vec<ElectionRecord>, Box<dyn Error>>
     }
     Ok(data)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_data() {
+        let result = load_data("Precinct_Data.csv");
+        assert!(result.is_ok());
+        let records = result.unwrap();
+        assert_eq!(records.len(), 836424);  // Length of the CSV File is 836424 (MINUES THE HEADER)
+    }
+}
