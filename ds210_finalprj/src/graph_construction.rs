@@ -50,3 +50,41 @@ pub fn build_graph(records: &[ElectionRecord]) -> Result<(UnGraph<String, u32>, 
 
     Ok((graph, vote_aggregation))
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Helper Function to Keep Record
+    fn create_record(precinct: &str, candidate: &str, votes: &str) -> ElectionRecord {
+        ElectionRecord {
+            precinct: Some(precinct.to_string()),
+            candidate: Some(candidate.to_string()),
+            votes: Some(votes.to_string()),
+        }
+    }
+
+    #[test]
+    fn test_build_graph() {
+        // Create a vector of ElectionRecords
+        let records = vec![
+            create_record("Precinct1", "CandidateA", "100"),
+            create_record("Precinct1", "CandidateB", "150"),
+            create_record("Precinct2", "CandidateA", "200"),
+            create_record("Precinct3", "CandidateB", "250"),
+        ];
+        let result = build_graph(&records).expect("Failed to build graph");
+        let (graph, vote_aggregation) = result;
+
+        // Check graph properties
+        assert_eq!(graph.node_count(), 3, "Graph should have 3 nodes");
+        assert_eq!(graph.edge_count(), 2, "Graph should have 2 edges");
+
+        // Check vote aggregation
+        assert_eq!(vote_aggregation.get("Precinct1").unwrap().get("CandidateA").unwrap(), &100);
+        assert_eq!(vote_aggregation.get("Precinct1").unwrap().get("CandidateB").unwrap(), &150);
+        assert_eq!(vote_aggregation.get("Precinct2").unwrap().get("CandidateA").unwrap(), &200);
+        assert_eq!(vote_aggregation.get("Precinct3").unwrap().get("CandidateB").unwrap(), &250);
+
+        // Check more properties if needed
+    }
+}
